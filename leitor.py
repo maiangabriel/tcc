@@ -10,9 +10,9 @@ image = cv2.imread("testedois.png")
 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 blurred = cv2.GaussianBlur(gray, (5, 5), 0)
 edged = cv2.Canny(blurred, 75, 200)
-
+res = []
 #Varíavel para gabarito
-gb =  {0: 1, 1: 4, 2: 0, 3: 3, 4: 1}
+gb =  [1,3,3,3,3]
 
 #Enontra os contornos na imagem
 cnts = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL,cv2.CHAIN_APPROX_SIMPLE)
@@ -50,35 +50,65 @@ for c in cnts:
 	if w >= 20 and h >= 20 and ar >= 0.9 and ar <= 1.1:
 		questionCnts.append(c)
 
+
 #A partir daqui, ele trata as questões
 questionCnts = contours.sort_contours(questionCnts, method="top-to-bottom")[0]
 correct = 0
 #No caso do papel testedois.png, temos 5 questões. Ele faz o loop a partir daqui
+res = []
+cont = 0
+x=0
+y=0
+bubbled = []
 for (q, i) in enumerate(np.arange(0, len(questionCnts), 5)):
+	cont = 0
 	cnts = contours.sort_contours(questionCnts[i:i + 5])[0]
-	bubbled = None
+	#bubbled = None
 	#Aqui ele verifica se a bolha está correta
+	bubbled = []
 	for (j, c) in enumerate(cnts):
+		x = thresh.shape[0]
+		y = thresh.shape[1]
 		#Verifica quem tá marcado
 		mask = np.zeros(thresh.shape, dtype="uint8")
 		cv2.drawContours(mask, [c], -1, 255, -1)
 		mask = cv2.bitwise_and(thresh, thresh, mask=mask)
 		total = cv2.countNonZero(mask)
-		if bubbled is None or total > bubbled[0]:
-			bubbled = (total, j)
+		#if bubbled is None or total > bubbled[0]:
+		#	bubbled = (total, j)
+	
+		#PRESTAR ATENÇAO AQUI.
+		
+		if total > x//20*y//10:
+			bubbled.append(j)
+			cont += 1
+	if cont == 1:
+		res.append(bubbled[0])
+	else:
+		res.append(-1)
 	#faz a verificação se a questão marcada está correta. A variavel 'K' ali tá puxando a gb, que é o gabarito(bem no início do código)
 	color = (0, 0, 255)
 	k = gb[q]
 	#Se a questão estiver correta, ele faz o count aqui
-	if k == bubbled[1]:
+	if k == bubbled[0]:
 		color = (0, 255, 0)
 		correct += 1
 	#Se baseando na variavel k, ele marca a questão correta
 	cv2.drawContours(paper, [cnts[k]], -1, color, 3)
 
+
+#loop de teste
+res2=[]
+for i in range(len(res)):
+	res2.append(res[len(res)-1-i])
+respostas = res2[::-1]
+print('respostas: ', respostas)
+
+
 #Faz a porcentagem de acerto e mostra na tela e mostra a imagem.
 score = (correct / 5.0) * 100
 print("[INFO] score: {:.2f}%".format(score))
+
 cv2.putText(paper, "{:.2f}%".format(score), (10, 30),
             cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
 cv2.imshow("Original", image)
